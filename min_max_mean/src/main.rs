@@ -12,5 +12,5 @@ fn main() {
             max = v;
         }
     }
-    println!("Minumum {}, Max {}, Average {}", min, max, sum / (values.len() as i32) );
+    println!("Minumum {}, Max {}, Average {}", min, max, sum / (values.len() as i64) );
 }
