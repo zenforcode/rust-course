@@ -1,0 +1,14 @@
+namespace flowfile;
+
+table Attribute {
+  key: string;
+  value: string;
+}
+
+table FlowFile {
+  attributes: [Attribute];
+  content: [ubyte];  // Binary content
+}
+
+root_type FlowFile;
+
