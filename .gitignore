@@ -1,0 +1,33 @@
+# Target directory (build output)
+target/
+
+# Rust package manager lock file (can be included for exact dependency version tracking)
+# If you're building a library, you might want to include this
+Cargo.lock
+
+# Rust debug and release artifacts
+debug/
+release/
+
+# Binary executables
+*.exe
+*.out
+*.o
+*.so
+*.dylib
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.iml
+
+# MacOS system files
+.DS_Store
+
+# Linux system files
+*.swp
+*~
+
+# Windows system files
+Thumbs.db
+
