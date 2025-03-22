@@ -16,18 +16,14 @@ Below is a description of each directory and file in this project:
 - **`exercises/`**  
   A collection of smaller practice tasks to reinforce Rust fundamentals like ownership, borrowing, lifetimes, and more.
 
-- **`for_loop/`**  
-  Examples using `for` loops in Rust, possibly including iteration over ranges, arrays, or collections.
-
 - **`if_cond/`**  
   Practice with conditional logic using `if`, `else if`, and `else`.
 
-- **`intro_rust.md`**  
-  A markdown document introducing Rust—possibly includes installation steps, basic syntax, and learning goals.
-
-- **`loop_break/`**  
+- **`lecture_01.md`**  
+  Getting Started with Rust: Ownership and Memory Management
+  
+- **`loops/`**  
   Demos of infinite loops and breaking out of loops in Rust using `loop`, `break`, and `continue`.
-
 - **`min_max_mean/`**  
   A project that likely calculates minimum, maximum, and mean values from a list of numbers.
 
