@@ -1,4 +1,4 @@
-# Fixed size arrty
+# Fixed size array
 A fixed-size array, denoted [T; N], for the element type, T, and the non-negative compile-time constant size, N.
 There are two syntactic forms for creating an array:
 
