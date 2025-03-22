@@ -33,7 +33,7 @@ Below is a description of each directory and file in this project:
 
 ## Getting Started
 
-Make sure you have Visual Studio Code installed, and it will create for your a DevContainer. If not:
+Make sure you have Visual Studio Code installed, and it will create for your a DevContainer to test the small projects on the . If not:
 
 
 ```bash
