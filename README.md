@@ -1,4 +1,4 @@
-# Rust Course
+# ZenForCode Rust Course
 
 This repository contains practice exercises and examples for learning the Rust programming language.
 
@@ -10,7 +10,8 @@ Below is a description of each directory and file in this project:
   Final or larger project demonstrating your understanding of Rust concepts. May include multiple modules and features.
 
 - **`convert_temperature/`**  
-  A small project or exercise to convert temperatures between Celsius and Fahrenheit using Rust.
+  A small project or exercise to convert temperatures between Celsius and Fahrenheit using Rust. It permits
+  the input output
 
 - **`exercises/`**  
   A collection of smaller practice tasks to reinforce Rust fundamentals like ownership, borrowing, lifetimes, and more.
@@ -32,11 +33,14 @@ Below is a description of each directory and file in this project:
 
 ## Getting Started
 
-Make sure you have Rust installed. If not:
+Make sure you have Visual Studio Code installed, and it will create for your a DevContainer. If not:
+
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+cd rust-course
+code .
 ```
+
 
 Then navigate into a folder and run a specific project:
 
