@@ -1,0 +1,553 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Rust Concurrency: Smart Pointers, Closures & Patterns</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/white.min.css">
+  <style>
+    .smallsize {
+      font-size: 20px;
+    }</style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+      <section><h1>🚀 Rust Concurrency</h1><p>Smart Pointers, Closures, Concurrency Patterns, Actor Model</p></section>
+      <section>
+        <h2>Rust Smart Pointers</h2>
+        <p>Ownership, conversions, multithreading, and design principles</p>
+      </section>
+	  <section>
+        <h3>What is a Smart Pointer?</h3>
+        <ul>
+          <li>A smart pointer is a data structure that behaves like a pointer but provides extra functionality.</li>
+          <li>In Rust, smart pointers manage:
+            <ul>
+              <li>Memory allocation and deallocation</li>
+              <li>Reference counting (shared ownership)</li>
+              <li>Interior mutability</li>
+              <li>Thread-safe access in some cases</li>
+            </ul>
+          </li>
+          <li>Common smart pointers in Rust:
+            <code>Box</code>, <code>Rc</code>, <code>Arc</code>, <code>RefCell</code>
+          </li>
+        </ul>
+      </section>
+      <section>
+        <h3>Advantages & Disadvantages</h3>
+        <ul>
+          <li><strong>Safety:</strong> Compile-time memory guarantees</li>
+          <li><strong>Automation:</strong> Memory cleanup via Drop</li>
+          <li><strong>Control:</strong> Pick the best tool (Box, Rc, etc.)</li>
+        </ul>
+        <ul>
+          <li><strong>❌ Overhead:</strong> Rc/Arc has runtime cost</li>
+          <li><strong>❌ Complexity:</strong> Choosing the right pointer</li>
+          <li><strong>❌ Strictness:</strong> Borrow checker limitations</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3>Ownership Strategies</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Smart Pointer</th>
+              <th>Ownership</th>
+              <th>Shared?</th>
+              <th>Mutable?</th>
+              <th>Thread-safe?</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Box&lt;T&gt;</td><td>Unique</td><td>❌</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Rc&lt;T&gt;</td><td>Shared</td><td>✅</td><td>❌</td><td>❌</td></tr>
+            <tr><td>Arc&lt;T&gt;</td><td>Shared</td><td>✅</td><td>❌</td><td>✅</td></tr>
+            <tr><td>RefCell&lt;T&gt;</td><td>Unique*</td><td>❌</td><td>✅</td><td>❌</td></tr>
+          </tbody>
+        </table>
+        <p><em>*Enforces borrow rules at runtime.</em></p>
+      </section>
+      <section><h3>Box at work</h3>
+        <p>Box provides the simplest way to create a unique smart pointer. For example, to implement a linked list:</p>
+        <pre><code class="language-rust">enum List {
+            Node(i32, Box&lt;List&gt;),
+            Empty,
+        }        
+use List::*;
+fn print_list(list: &List) {
+  match list {
+      Node(val, next) => {
+          println!("{}", val);
+          print_list(next);
+      },
+      Empty => println!("End"),
+  }
+}
+// functional way to define a list.
+fn main() {
+    let list = Node(1, Box::new(Node(2, Box::new(Node(3, Box::new(Empty))))));
+    print_list(&list);
+} 
+        </code>
+        </pre>
+      </section> 
+
+      <section><h3>Arc Example</h3>
+        <p>Arc allows safe shared access across threads:</p>
+        <pre><code class="language-rust">use std::sync::Arc;
+use std::thread;
+
+fn main() {
+    let numbers = Arc::new(vec![1, 2, 3]);
+    let mut handles = vec![];
+
+    for _ in 0..3 {
+        let nums = Arc::clone(&numbers);
+        let handle = thread::spawn(move || {
+            println!("Thread sees: {:?}", nums);
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+}</code></pre>
+        <p>This demonstrates <code>Arc</code> providing thread-safe shared ownership of immutable data.</p>
+      </section>
+
+      <section><h3>Rc Example</h3>
+        <p>Rc is used for shared ownership in single-threaded contexts:</p>
+        <pre><code class="language-rust">use std::rc::Rc;
+
+fn main() {
+    let data = Rc::new(String::from("Hello, world!"));
+    let a = Rc::clone(&data);
+    let b = Rc::clone(&data);
+
+    println!("Reference count: {}", Rc::strong_count(&data));
+    println!("a = {}", a);
+    println!("b = {}", b);
+}</code></pre>
+        <p><code>Rc</code> is not thread-safe. Use it when sharing ownership within a single thread.</p>
+      </section>
+      <section><h3>RefCell and Rust's Borrowing Rules</h3>
+        <p>Rust memory safety is based on this rule:</p>
+        <ol>
+          <li>Several immutable references (<code class="language-rust">&T</code>) to the object (aliasing)</li>
+          <li>One mutable reference (<code class="language-rust">&mut T</code>) to the object (mutability)</li>
+        </ol>
+      </section>
+      <section>
+        <h3>RefCell and Rust's Borrowing Rules</h3>
+        <p>Rust's Borrowing Rules are enforced at compile time.</p>
+        <p><strong>RefCell</strong> enables this at runtime by enforcing borrowing rules dynamically.</p>
+        <ul>
+          <li>Use <code>Cell</code>, <code>RefCell</code>, <code>OnceCell</code> in single-threaded code</li>
+          <li>Use <code>Mutex</code>, <code>RwLock</code>, <code>OnceLock</code>, or atomics in multithreaded code</li>
+        </ul>
+      </section>      
+      <section><h3>RefCell Example</h3>
+        <p>RefCell example showing interior mutability with borrow rules checked at runtime:</p>
+        <pre><code class="language-rust">use std::cell::RefCell;
+
+fn main() {
+    let x = RefCell::new(5);
+
+    {
+        let y = x.borrow(); // Immutable borrow in its own scope
+        println!("{}", y);  // Use it here
+    } // y goes out of scope here
+
+    {
+        let mut z = x.borrow_mut(); // Now it's safe to mutably borrow
+        *z += 1;
+        println!("{}", z);
+    }
+}</code></pre>
+      </section>
+      <section>
+        <h3>Conclusion</h3>
+        <ul>
+          <li>Smart pointers in Rust are powerful &amp; safe</li>
+          <li>Pick the right type for your ownership model</li>
+          <li>Understand trade-offs: speed, safety, complexity</li>
+        </ul>
+      </section>
+	 
+      <section><h2>Closures</h2>
+        <p>A closure is a technique for implementing lexically scoped name binding.</p>
+        <ul>
+          <li><code>FnOnce</code>: Can only be called once because it consumes the captured variables (i.e., takes ownership of them)</li>
+          <li><code>FnMut</code>: Can be called multiple times but can mutate the captured variables.</li>
+          <li><code>Fn</code>: Can be called multiple times and doesn’t consume the captured variables. The captured values are either immutable or copyable.</li>
+        </ul>
+      </section>
+
+      <section><h2>FnOnce</h2><pre><code class="language-rust">fn main() {
+    let x = "some_string".to_string();
+    let random_function = || x;
+    println!("{:?}", random_function());
+    // println!("{:?}", random_function()); // ERROR
+}</code></pre></section>
+
+      <section><h2>FnMut</h2><pre><code class="language-rust">fn main() {
+    let mut x = 1;
+    let mut add_one = || {
+        x += 1;
+        x
+    };
+    println!("{:?}", add_one());
+    println!("{:?}", add_one());
+}</code></pre></section>
+
+      <section><h2>Fn</h2><pre><code class="language-rust">fn main() {
+    let x = 1;
+    let print_x = || println!("x is: {}", x);
+    print_x();
+    print_x();
+}</code></pre></section>
+
+      <section><h2>Closures with Parameters</h2>
+        <p>Closures, like functions, can also accept parameters.</p>
+<pre><code class="language-rust">fn main() {
+    let add_one = |x| x + 1;
+    println!("{:?}", add_one(1));
+}</code></pre>
+<pre><code class="language-rust">fn main() {
+    let add_one = |x: i32| x + 1;
+    println!("{:?}", add_one(1));
+}</code></pre>
+<p>Closures are monomorphic. If a closure expects <code>i32</code>, passing <code>u32</code> will cause a compile-time error.</p>
+      </section>
+
+      <section><h2>Common Issues in Concurrency</h2>
+        <ul>
+          <li><strong>Data Races</strong>: Rust prevents these through ownership rules.</li>
+          <li><strong>Deadlocks</strong>: Still possible if resources are not carefully managed.</li>
+        </ul>
+        <p>Think of deadlocks like two crabs with claws stuck together — waiting forever!</p>
+      </section>
+
+      <section><h2>Threading Example</h2><pre><code class="language-rust">use std::thread;
+use std::time::Duration;
+
+fn main() {
+    let handle = thread::spawn(|| {
+        for i in 1..5 {
+            println!("Hi from the spawned thread: {}", i);
+            thread::sleep(Duration::from_millis(1));
+        }
+    });
+
+    for i in 1..5 {
+        println!("Hi from the main thread: {}", i);
+        thread::sleep(Duration::from_millis(1));
+    }
+
+    handle.join().unwrap();
+}</code></pre>
+<p>Threads interleave execution demonstrating concurrency.</p></section>
+      <section><h2>Threading Pitfall - Part 1</h2><pre><code class="language-rust">use std::thread;
+fn main() {
+    let data = vec![1, 2, 3];
+    let handle = thread::spawn(|| {
+        println!("Data in new thread: {:?}", data);
+    });
+    handle.join().unwrap();
+}</code></pre>
+<p><strong>Error:</strong> closure may outlive the function but borrows data.</p>
+</section>
+<section>
+
+<pre><code class="language-rust">fn main() {
+    let data = vec![1, 2, 3];
+    drop(data);
+    let handle = thread::spawn(|| {
+        println!("Data in new thread: {:?}", data);
+    });
+    handle.join().unwrap();
+}</code></pre>
+<p><strong>Fix:</strong> Use <code>move</code> to transfer ownership:</p>
+<pre><code class="language-rust">fn main() {
+    let data = vec![1, 2, 3];
+    let handle = thread::spawn(move || {
+        println!("Data in new thread: {:?}", data);
+    });
+    handle.join().unwrap();
+}</code></pre></section>
+
+<section><h2>Message Passing vs Shared State</h2>
+  <p>Two primary models of concurrency in Rust:</p>
+  <ul>
+    <li>Message Passing</li>
+    <li>Shared State</li>
+  </ul>
+</section>
+
+<section><h2>Message Passing</h2>
+  <ul>
+    <li>Threads communicate by sending messages (usually via channels)</li>
+    <li>Inspired by CSP (Communicating Sequential Processes)</li>
+    <li><strong>Pros:</strong> Isolated state, prevents race conditions</li>
+    <li><strong>Cons:</strong> Can be complex to structure for bi-directional flow</li>
+  </ul>
+</section>
+<section>
+  <h2>Shared State</h2>
+  <ul>
+    <li>Multiple threads access shared memory with synchronization (e.g., Arc + Mutex)</li>
+    <li><strong>Pros:</strong> Familiar model, flexible for shared data scenarios</li>
+    <li><strong>Cons:</strong> Requires careful locking, potential for deadlocks</li>
+  </ul>
+</section>
+<section><h2>Message Passing: Send/Receive with Crossbeam</h2><pre><code class="language-rust">use crossbeam_channel::unbounded;
+use std::thread;
+
+fn main() {
+    let (sender, receiver) = unbounded();
+
+    for i in 0..5 {
+        let thread_sender = sender.clone();
+        thread::spawn(move || {
+            thread_sender.send(format!("Message from thread {}", i)).unwrap();
+        });
+    }
+
+    drop(sender);
+
+    for msg in receiver.iter() {
+        println!("{}", msg);
+    }
+}</code></pre></section>
+
+      <section><h2>Shared State: Arc and Mutex</h2><pre><code class="language-rust">use std::sync::{Arc, Mutex};
+use std::thread;
+
+fn main() {
+    let counter = Arc::new(Mutex::new(0));
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let counter_clone = Arc::clone(&counter);
+        let handle = thread::spawn(move || {
+            let mut num = counter_clone.lock().unwrap();
+            *num += 1;
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("Final counter value: {}", *counter.lock().unwrap());
+}</code></pre></section>
+<section>
+  <h2>Common Errors with Multithreading</h2>
+  <p>You might run into two common errors when working with threads:</p>
+  <ul>
+    <li><code>&lt;type&gt; cannot be shared between threads safely</code>: The type does not implement the <code>Sync</code> trait.</li>
+    <li><code>&lt;type&gt; cannot be sent between threads safely</code>: The type does not implement the <code>Send</code> trait.</li>
+  </ul>
+  </section>
+  <section><h2>Error Example</h2>
+  <pre><code class="language-rust">use std::rc::Rc;
+use std::thread;
+
+fn main() {
+let data = Rc::new(42);
+let handle = thread::spawn(move || {
+  println!("Data: {}", data);
+});
+handle.join().unwrap();
+}</code></pre>
+  <p><strong>Error:</strong> <code>Rc&lt;i32&gt;</code> cannot be sent between threads safely.</p>
+  <p><strong>Solution:</strong> Use <code>Arc</code> instead of <code>Rc</code> for thread-safe reference counting.</p>
+</section>
+<section><h2>What is Asynchronous (async) Rust?</h2>
+        <p>Async programming allows a thread to do other things while waiting for an operation to complete.</p>
+        <p>Think of it like setting a timer for a pie — you don't just stand and wait for it to bake!</p>
+        <pre><code class="language-rust">use reqwest::Error;
+
+#[tokio::main]
+async fn main() -> Result&lt;(), Error&gt; {
+    let response = reqwest::get("https://jsonplaceholder.typicode.com/posts/1").await?;
+    let body = response.text().await?;
+    println!("{}", body);
+    Ok(())
+}</code></pre>
+        <ul>
+          <li><strong>Async Main:</strong> Uses <code>#[tokio::main]</code> to make it async.</li>
+          <li><strong>Awaiting:</strong> <code>.await</code> lets us yield control while waiting.</li>
+        </ul>
+      </section>
+
+      <section><h2>Multitasking with async: tokio::join!</h2>
+        <pre><code class="language-rust">use tokio::time::{sleep, Duration};
+async fn long_task() {
+    println!("Starting long task...");
+    sleep(Duration::from_secs(3)).await;
+    println!("Long task completed!");
+}
+async fn immediate_task() {
+    println!("Immediate task runs without waiting.");
+}
+#[tokio::main]
+async fn main() {
+    println!("Program started!");
+    tokio::join!(
+        long_task(),
+        immediate_task()
+    );
+    println!("Program finished!");
+}</code></pre>
+        <ul>
+          <li>Tasks run concurrently</li>
+          <li><code>join!</code> waits for both to finish</li>
+        </ul>
+      </section>
+    
+      <section><h2>select!: Compete Tasks</h2>
+        <p><code>select!</code> runs multiple tasks, continuing with the first one that completes and cancelling the others.</p>
+        <pre><code class="language-rust">use tokio::time::{sleep, Duration};
+use tokio::select;
+
+#[tokio::main]
+async fn main() {
+    let task1 = async {
+        sleep(Duration::from_secs(30)).await;
+        "Task 1 completed"
+    };
+
+    let task2 = async {
+        sleep(Duration::from_secs(10)).await;
+        "Task 2 completed"
+    };
+
+    select! {
+        result = task1 => println!("{}", result),
+        result = task2 => println!("{}", result),
+    }
+
+    println!("One of the tasks completed first!");
+}</code></pre>
+        <p><code>select!</code> proceeds with the first task that completes and cancels the rest.</p>
+      </section>
+
+      <section><h2>Async Traits with async_trait</h2>
+        <pre><code class="language-rust">use async_trait::async_trait;
+#[async_trait]
+trait AsyncAction {
+    async fn perform_action(&self);
+}
+struct MyStruct;
+#[async_trait]
+impl AsyncAction for MyStruct {
+    async fn perform_action(&self) {
+        println!("Performing async action...");
+    }
+}
+#[tokio::main]
+async fn main() {
+    let my_struct = MyStruct;
+    my_struct.perform_action().await;
+}</code></pre>
+        <p>We use <code>#[async_trait]</code> to enable async functions inside traits.</p>
+      </section>
+      <section><h2>Actor Model Overview</h2>
+        <p>The Actor model enables safe concurrency using isolated state and message passing between actors:</p>
+        <ul>
+          <li>Actors are independent, stateful units</li>
+          <li>They communicate via asynchronous messages</li>
+          <li>No shared memory; only message exchange</li>
+        </ul>
+        <p>This model helps eliminate data races and makes systems easier to scale and reason about.</p>
+      </section>
+
+      <section><h2>Actor Example with Akka Edge</h2>
+        <pre><code class="language-rust">use akka_edge::*;
+
+#[derive(Debug, Message)]
+#[rtype(result = "String")]
+struct Greet(String);
+
+struct Greeter;
+
+impl Actor for Greeter {
+    type Context = Context&lt;Self&gt;
+}
+
+impl Handler&lt;Greet&gt; for Greeter {
+    type Result = String;
+
+    fn handle(&mut self, msg: Greet, _ctx: &mut Context&lt;Self&gt;) -> Self::Result {
+        format!("Hello, {}!", msg.0)
+    }
+}
+
+fn main() {
+    let system = System::new();
+    let greeter = system.actor_of::&lt;Greeter&gt;("greeter");
+    let res = greeter.ask(Greet("Rustacean".into()));
+    println!("Response: {}", res.await.unwrap());
+}</code></pre>
+        <p><code>akka_edge</code> provides an actor system with typed messages and async handling.</p>
+      </section>
+
+      <section><h2>Actix-web Actor Integration</h2>
+        <pre><code class="language-rust">use actix::prelude::*;
+use actix_web::{web, App, HttpServer, Responder, HttpResponse};
+
+struct Ping;
+impl Message for Ping {
+    type Result = &'static str;
+}
+
+struct MyActor;
+impl Actor for MyActor {
+    type Context = Context&lt;Self&gt;;
+}
+
+impl Handler&lt;Ping&gt; for MyActor {
+    type Result = &'static str;
+    fn handle(&mut self, _msg: Ping, _ctx: &mut Context&lt;Self&gt;) -> Self::Result {
+        "Pong"
+    }
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result&lt;()&gt; {
+    let addr = MyActor.start();
+
+    HttpServer::new(move || {
+        App::new().route("/ping", web::get().to(move || {
+            let addr = addr.clone();
+            async move {
+                let res = addr.send(Ping).await.unwrap();
+                HttpResponse::Ok().body(res)
+            }
+        }))
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}</code></pre>
+        <p><code>actix_web</code> supports integrating actors with web requests using message passing.</p>
+      </section>
+      </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.js"></script>
+  <link rel="stylesheet" href="plugin/highlight/monokai.css" />
+  <script src="plugin/highlight/highlight.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true, slideNumber: true ,
+    plugins: [RevealHighlight],
+  });
+</script>
+</body>
+</html>
